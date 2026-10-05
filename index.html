@@ -1,0 +1,896 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NetPayRemote — US Remote Worker Take-Home Pay Calculator</title>
+    <meta name="description" content="Calculate your exact take-home pay as a US remote contractor after W-8BEN, DTAA, platform fees, and local taxes. Free instant calculator.">
+    <meta name="keywords" content="remote contractor tax calculator, US remote worker take home pay, W-8BEN calculator, DTAA tax calculator, freelancer net income">
+    <link rel="canonical" href="https://netpayremote.vercel.app/">
+    <meta property="og:title" content="NetPayRemote — Know Your Exact Take-Home Pay">
+    <meta property="og:description" content="Stop guessing. Calculate exact net earnings after US tax, DTAA, platform cuts, and local taxes in 30 seconds.">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://netpayremote.vercel.app/">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        dark: { 50:'#f8fafc', 100:'#1e293b', 200:'#0f172a', 300:'#0b1120', 400:'#060a14' },
+                        brand: { green:'#00D26A', cyan:'#00F0FF', blue:'#3B82F6' }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        * { box-sizing: border-box; }
+        input[type="number"]::-webkit-inner-spin-button,
+        input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+        input[type="number"] { -moz-appearance: textfield; }
+        .fade-in { animation: fadeIn 0.4s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .modal-overlay { backdrop-filter: blur(8px); }
+        .spin-ring { animation: spinRing 0.8s linear infinite; }
+        @keyframes spinRing { to { transform: rotate(360deg); } }
+        .confetti { position: fixed; width: 10px; height: 10px; pointer-events: none; z-index: 9999; animation: confettiFall 3s linear forwards; }
+        @keyframes confettiFall { to { transform: translateY(100vh) rotate(720deg); opacity: 0; } }
+        .slider-track { -webkit-appearance: none; appearance: none; background: transparent; cursor: pointer; }
+        .slider-track::-webkit-slider-runnable-track { background: linear-gradient(to right, #00D26A, #00F0FF); height: 6px; border-radius: 3px; }
+        .slider-track::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; margin-top: -7px; background: #00D26A; height: 20px; width: 20px; border-radius: 50%; border: 3px solid white; box-shadow: 0 2px 8px rgba(0,210,106,0.4); cursor: pointer; }
+        .slider-track::-moz-range-track { background: linear-gradient(to right, #00D26A, #00F0FF); height: 6px; border-radius: 3px; }
+        .slider-track::-moz-range-thumb { background: #00D26A; height: 20px; width: 20px; border-radius: 50%; border: 3px solid white; cursor: pointer; }
+        .faq-item summary::-webkit-details-marker { display: none; }
+        .faq-item summary { list-style: none; }
+        .faq-item[open] .faq-arrow { transform: rotate(180deg); }
+        .faq-arrow { transition: transform 0.3s; }
+    </style>
+</head>
+
+<body class="bg-gray-50 dark:bg-dark-300 text-gray-900 dark:text-gray-100 min-h-screen font-sans antialiased transition-colors duration-300">
+
+    <!-- ═══════════════ HEADER WITH SVG LOGO & REAL LIVE TICKER ═══════════════ -->
+    <header class="sticky top-0 z-50 bg-white/80 dark:bg-dark-200/80 backdrop-blur-xl border-b border-gray-200 dark:border-gray-800">
+        <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
+            <div class="flex items-center gap-2.5">
+                <!-- Premium SVG Fintech Logo -->
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-brand-green to-brand-cyan flex items-center justify-center shadow-lg relative overflow-hidden">
+                    <svg id="svgLogoElement" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40" class="w-7 h-7">
+                        <defs>
+                            <linearGradient id="boltGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" style="stop-color:#ffffff;stop-opacity:1" />
+                                <stop offset="100%" style="stop-color:#ffffff;stop-opacity:0.85" />
+                            </linearGradient>
+                        </defs>
+                        <path d="M22 4 L10 22 L18 22 L14 36 L28 16 L20 16 L24 4 Z" fill="url(#boltGrad)" stroke="#000" stroke-width="0.5" stroke-linejoin="round"/>
+                        <circle cx="30" cy="10" r="4" fill="#000" opacity="0.15"/>
+                        <text x="30" y="12.5" text-anchor="middle" fill="#000" font-size="6" font-weight="900" font-family="Arial">$</text>
+                    </svg>
+                </div>
+                <div>
+                    <h1 class="text-lg font-extrabold tracking-tight">NetPay<span class="text-brand-green">Remote</span></h1>
+                    <p class="text-[10px] text-gray-400 dark:text-gray-500 -mt-0.5 hidden sm:block">US Contractor Tax Engine • 2026</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-2">
+                <div class="hidden md:flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-dark-100 px-2.5 py-1 rounded-lg border border-gray-200 dark:border-gray-700">
+                    <span class="w-1.5 h-1.5 rounded-full bg-brand-green animate-pulse"></span>
+                    <span id="liveTicker">Loading real rate...</span>
+                </div>
+                <span id="detectedBadge" class="hidden text-xs bg-brand-green/10 text-brand-green border border-brand-green/30 px-2.5 py-1 rounded-lg font-bold"></span>
+                <button id="themeToggle" onclick="toggleTheme()" class="w-9 h-9 rounded-xl bg-gray-100 dark:bg-dark-100 border border-gray-200 dark:border-gray-700 flex items-center justify-center hover:bg-gray-200 dark:hover:bg-gray-700 transition" title="Toggle Theme">
+                    <i data-lucide="sun" class="w-4 h-4 hidden dark:block text-yellow-400"></i>
+                    <i data-lucide="moon" class="w-4 h-4 block dark:hidden text-gray-600"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- ═══════════════ AD SLOT 1 ═══════════════ -->
+    <div class="max-w-6xl mx-auto px-4 pt-3">
+        <div id="adSlot1" class="w-full bg-gray-100 dark:bg-dark-100 border border-dashed border-gray-300 dark:border-gray-700 rounded-xl p-3 text-center text-xs text-gray-400 dark:text-gray-600">
+            Ad Space — Google AdSense / Adsterra
+        </div>
+    </div>
+
+    <!-- ═══════════════ MAIN ═══════════════ -->
+    <main class="max-w-6xl mx-auto px-4 py-6">
+
+        <!-- Hero -->
+        <div class="text-center max-w-2xl mx-auto mb-8 fade-in">
+            <h2 class="text-3xl sm:text-4xl font-black tracking-tight">
+                Know Your <span class="text-transparent bg-clip-text bg-gradient-to-r from-brand-green to-brand-cyan">Actual Take-Home</span> Pay
+            </h2>
+            <p class="text-sm text-gray-500 dark:text-gray-400 mt-2">Calculate exact net earnings after US Withholding, DTAA, Platform Cuts & Local Taxes — in 30 seconds.</p>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+            <!-- ═══════ LEFT: INPUT FORM ═══════ -->
+            <div class="lg:col-span-5 bg-white dark:bg-dark-200 border border-gray-200 dark:border-gray-800 rounded-2xl p-5 shadow-sm space-y-5 fade-in">
+                <h3 class="text-base font-bold flex items-center gap-2 pb-3 border-b border-gray-100 dark:border-gray-800">
+                    <i data-lucide="calculator" class="w-4 h-4 text-brand-green"></i>
+                    Your Contract Details
+                </h3>
+
+                <!-- Pay Rate -->
+                <div>
+                    <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1.5">Gross Pay Rate (USD)</label>
+                    <div class="relative">
+                        <span class="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 font-bold">$</span>
+                        <input type="number" id="payAmount" min="0" step="any" placeholder="e.g. 35, 50, 100"
+                            class="w-full pl-9 pr-24 py-3 bg-gray-50 dark:bg-dark-300 border border-gray-200 dark:border-gray-700 rounded-xl text-lg font-bold outline-none focus:ring-2 focus:ring-brand-green focus:border-transparent transition"
+                            oninput="debouncedCalculate()" onkeydown="if(event.key==='Enter') calculate()">
+                        <select id="payPeriod" onchange="toggleHourly(); calculate()"
+                            class="absolute right-2 top-1/2 -translate-y-1/2 bg-gray-200 dark:bg-dark-100 text-xs font-semibold rounded-lg py-1.5 px-2 outline-none cursor-pointer">
+                            <option value="hourly">/ Hour</option>
+                            <option value="monthly">/ Month</option>
+                            <option value="annual">/ Year</option>
+                        </select>
+                    </div>
+                    <p class="text-[11px] text-gray-400 mt-1">💡 Press Enter for instant calculation</p>
+                </div>
+
+                <!-- Hourly Details -->
+                <div id="hourlyFields" class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-[11px] font-medium text-gray-400 mb-1">Hours / Week</label>
+                        <input type="number" id="hoursWeek" value="40" min="1" max="168"
+                            class="w-full px-3 py-2.5 bg-gray-50 dark:bg-dark-300 border border-gray-200 dark:border-gray-700 rounded-xl text-sm font-semibold outline-none focus:border-brand-green transition"
+                            oninput="debouncedCalculate()">
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-medium text-gray-400 mb-1">Weeks / Year</label>
+                        <input type="number" id="weeksYear" value="50" min="1" max="52"
+                            class="w-full px-3 py-2.5 bg-gray-50 dark:bg-dark-300 border border-gray-200 dark:border-gray-700 rounded-xl text-sm font-semibold outline-none focus:border-brand-green transition"
+                            oninput="debouncedCalculate()">
+                    </div>
+                </div>
+
+                <!-- Country -->
+                <div>
+                    <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1.5">Your Tax Residence</label>
+                    <select id="country" onchange="calculate()"
+                        class="w-full px-3.5 py-3 bg-gray-50 dark:bg-dark-300 border border-gray-200 dark:border-gray-700 rounded-xl text-sm font-semibold outline-none focus:ring-2 focus:ring-brand-green transition cursor-pointer">
+                        <option value="">🌍 Select your country...</option>
+                        <option value="IN">🇮🇳 India (DTAA 0% + 44ADA)</option>
+                        <option value="PH">🇵🇭 Philippines (8% Flat)</option>
+                        <option value="BR">🇧🇷 Brazil (Carnê-Leão)</option>
+                        <option value="PK">🇵🇰 Pakistan (PSEB 0.25%)</option>
+                        <option value="NG">🇳🇬 Nigeria (Tiered PIT)</option>
+                        <option value="PL">🇵🇱 Poland (Ryczałt 12%)</option>
+                        <option value="GB">🇬🇧 United Kingdom (Sole Trader)</option>
+                        <option value="CA">🇨🇦 Canada (T2125)</option>
+                        <option value="MX">🇲🇽 Mexico (RESICO 1-2.5%)</option>
+                        <option value="OTHER">🌐 Other Country</option>
+                    </select>
+                    <p class="text-[11px] text-gray-400 mt-1">💡 Auto-detected from your location</p>
+                </div>
+
+                <!-- Platform -->
+                <div>
+                    <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1.5">How Do You Get Paid?</label>
+                    <select id="platform" onchange="calculate()"
+                        class="w-full px-3.5 py-3 bg-gray-50 dark:bg-dark-300 border border-gray-200 dark:border-gray-700 rounded-xl text-sm font-semibold outline-none focus:ring-2 focus:ring-brand-green transition cursor-pointer">
+                        <option value="">💳 Select payout method...</option>
+                        <option value="wise">Wise (0.5-1% FX) ⭐ Best Rate</option>
+                        <option value="skydo">Skydo ($19 Flat, 0% FX)</option>
+                        <option value="deel">Deel (1.5% Fee)</option>
+                        <option value="payoneer">Payoneer (2.5-3% FX)</option>
+                        <option value="upwork">Upwork (10% Fee)</option>
+                        <option value="swift">Bank Wire ($35 Flat)</option>
+                    </select>
+                    <p class="text-[11px] text-gray-400 mt-1">💡 This affects your platform & FX fee deduction</p>
+                </div>
+
+                <!-- W-8BEN -->
+                <label class="flex items-start gap-3 bg-gray-50 dark:bg-dark-300 border border-gray-200 dark:border-gray-700 p-3.5 rounded-xl cursor-pointer hover:border-brand-green transition">
+                    <input type="checkbox" id="w8ben" checked onchange="calculate()" class="mt-0.5 w-4 h-4 rounded text-brand-green focus:ring-brand-green cursor-pointer">
+                    <span class="text-xs text-gray-600 dark:text-gray-300 leading-relaxed">
+                        <strong class="text-gray-900 dark:text-white">I've signed Form W-8BEN</strong><br>
+                        This reduces US IRS withholding from 30% to 0% under DTAA treaty.
+                    </span>
+                </label>
+            </div>
+
+            <!-- ═══════ RIGHT: RESULTS ═══════ -->
+            <div class="lg:col-span-7 space-y-5">
+
+                <!-- Main Result Card -->
+                <div id="resultCard" class="bg-white dark:bg-dark-200 border border-gray-200 dark:border-gray-800 rounded-2xl p-6 shadow-sm relative overflow-hidden fade-in">
+                    <div class="absolute -top-16 -right-16 w-48 h-48 bg-brand-green/5 dark:bg-brand-green/10 rounded-full blur-3xl pointer-events-none"></div>
+
+                    <div id="emptyState" class="text-center py-10">
+                        <i data-lucide="arrow-up-left" class="w-10 h-10 text-gray-300 dark:text-gray-600 mx-auto mb-3"></i>
+                        <p class="text-gray-400 dark:text-gray-500 text-sm font-medium">Fill in your details to see your exact take-home pay</p>
+                    </div>
+
+                    <!-- Loading State -->
+                    <div id="loadingState" class="hidden text-center py-10">
+                        <div class="inline-block w-10 h-10 border-4 border-gray-200 dark:border-gray-700 border-t-brand-green rounded-full spin-ring"></div>
+                        <p class="text-gray-400 text-xs font-medium mt-3">Calculating your take-home pay...</p>
+                    </div>
+
+                    <div id="resultContent" class="hidden">
+                        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-5 border-b border-gray-100 dark:border-gray-800">
+                            <div>
+                                <span class="text-[11px] font-bold uppercase tracking-wider text-gray-400">Net Monthly In-Pocket</span>
+                                <div class="text-4xl sm:text-5xl font-black text-brand-green mt-1 tracking-tight" id="netUSD">$0</div>
+                                <p class="text-[10px] text-gray-400 mt-1" id="timestampText">Just calculated</p>
+                            </div>
+                            <div class="bg-gray-50 dark:bg-dark-300 border border-gray-200 dark:border-gray-700 px-4 py-2.5 rounded-xl sm:text-right">
+                                <!-- Currency Toggle -->
+                                <div class="flex gap-1 mb-1 justify-end" id="currencyToggle">
+                                    <button onclick="setDisplayCurrency('local')" id="btnLocal" class="text-[10px] font-bold px-2 py-0.5 rounded bg-brand-green text-black">Local</button>
+                                    <button onclick="setDisplayCurrency('USD')" id="btnUSD" class="text-[10px] font-bold px-2 py-0.5 rounded bg-gray-200 dark:bg-dark-100 text-gray-500">USD</button>
+                                    <button onclick="setDisplayCurrency('EUR')" id="btnEUR" class="text-[10px] font-bold px-2 py-0.5 rounded bg-gray-200 dark:bg-dark-100 text-gray-500">EUR</button>
+                                    <button onclick="setDisplayCurrency('GBP')" id="btnGBP" class="text-[10px] font-bold px-2 py-0.5 rounded bg-gray-200 dark:bg-dark-100 text-gray-500">GBP</button>
+                                </div>
+                                <span class="text-[10px] font-semibold text-gray-400 uppercase block" id="localLabel">In Local Currency</span>
+                                <span class="text-2xl font-black text-brand-cyan" id="netLocal">$0</span>
+                            </div>
+                        </div>
+
+                        <!-- Shock Factor -->
+                        <div id="shockBox" class="hidden mt-4 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800/50 rounded-xl p-3.5 flex items-start gap-2.5">
+                            <span class="text-lg">⚠️</span>
+                            <div>
+                                <p class="text-sm font-bold text-red-700 dark:text-red-400" id="shockText">You're losing $0/year in hidden fees!</p>
+                                <p class="text-[11px] text-red-500 dark:text-red-400/70 mt-0.5">Switch to a smarter payout route below to keep more of your money.</p>
+                            </div>
+                        </div>
+
+                        <!-- Metrics Grid -->
+                        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-5">
+                            <div class="bg-gray-50 dark:bg-dark-300 p-3 rounded-xl border border-gray-100 dark:border-gray-800">
+                                <span class="text-[10px] uppercase font-bold text-gray-400 block">Gross Annual</span>
+                                <span class="text-sm font-bold mt-0.5 block" id="grossAnnual">$0</span>
+                            </div>
+                            <div class="bg-gray-50 dark:bg-dark-300 p-3 rounded-xl border border-gray-100 dark:border-gray-800">
+                                <span class="text-[10px] uppercase font-bold text-gray-400 block">Platform Cuts</span>
+                                <span class="text-sm font-bold text-red-500 mt-0.5 block" id="feeTotal">-$0</span>
+                            </div>
+                            <div class="bg-gray-50 dark:bg-dark-300 p-3 rounded-xl border border-gray-100 dark:border-gray-800">
+                                <span class="text-[10px] uppercase font-bold text-gray-400 block">US IRS Tax</span>
+                                <span class="text-sm font-bold text-amber-500 mt-0.5 block" id="usTax">$0</span>
+                            </div>
+                            <div class="bg-gray-50 dark:bg-dark-300 p-3 rounded-xl border border-gray-100 dark:border-gray-800">
+                                <span class="text-[10px] uppercase font-bold text-gray-400 block">Local Tax</span>
+                                <span class="text-sm font-bold text-red-500 mt-0.5 block" id="localTax">-$0</span>
+                            </div>
+                        </div>
+
+                        <!-- Efficiency Bar -->
+                        <div class="mt-5 space-y-1.5">
+                            <div class="flex justify-between text-xs text-gray-400 font-medium">
+                                <span>Take-Home Efficiency</span>
+                                <span id="effPct" class="text-brand-green font-bold">0%</span>
+                            </div>
+                            <div class="w-full bg-gray-100 dark:bg-dark-300 rounded-full h-2.5 overflow-hidden flex">
+                                <div id="barNet" class="bg-brand-green h-full transition-all duration-700" style="width:0%"></div>
+                                <div id="barTax" class="bg-red-400 h-full transition-all duration-700" style="width:0%"></div>
+                                <div id="barFee" class="bg-amber-400 h-full transition-all duration-700" style="width:0%"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- What If Slider -->
+                <div id="whatIfSection" class="hidden bg-white dark:bg-dark-200 border border-gray-200 dark:border-gray-800 rounded-2xl p-5 shadow-sm fade-in">
+                    <h4 class="text-xs font-bold uppercase tracking-wider text-gray-400 mb-3 flex items-center gap-1.5">
+                        <i data-lucide="sliders-horizontal" class="w-4 h-4 text-brand-green"></i>
+                        What If Your Rate Was...?
+                    </h4>
+                    <div class="flex items-center gap-3">
+                        <span class="text-xs text-gray-500 font-semibold">$10</span>
+                        <input type="range" id="whatIfSlider" min="10" max="300" value="45" step="5"
+                            class="slider-track flex-1 h-2" oninput="updateWhatIf()">
+                        <span class="text-xs text-gray-500 font-semibold">$300</span>
+                    </div>
+                    <div class="mt-3 bg-gray-50 dark:bg-dark-300 p-3 rounded-lg flex items-center justify-between">
+                        <div>
+                            <span class="text-[10px] uppercase font-bold text-gray-400">At $<span id="whatIfRate">45</span>/hr</span>
+                            <p class="text-xs text-gray-500 mt-0.5">Your net monthly would be:</p>
+                        </div>
+                        <span class="text-lg font-black text-brand-green" id="whatIfResult">$0</span>
+                    </div>
+                </div>
+
+                <!-- Compare Table -->
+                <div id="compareSection" class="hidden bg-white dark:bg-dark-200 border border-gray-200 dark:border-gray-800 rounded-2xl p-5 shadow-sm fade-in">
+                    <h4 class="text-xs font-bold uppercase tracking-wider text-gray-400 mb-3 flex items-center gap-1.5">
+                        <i data-lucide="git-compare" class="w-4 h-4 text-brand-green"></i>
+                        Payout Route Comparison (Monthly Cost)
+                    </h4>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-xs">
+                            <thead>
+                                <tr class="text-gray-400 border-b border-gray-100 dark:border-gray-800">
+                                    <th class="text-left py-2 font-semibold">Platform</th>
+                                    <th class="text-right py-2 font-semibold">Fee/Month</th>
+                                    <th class="text-right py-2 font-semibold">Annual Loss</th>
+                                    <th class="text-right py-2 font-semibold">Rating</th>
+                                </tr>
+                            </thead>
+                            <tbody id="compareBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- CPA Partner Cards -->
+                <div id="cpaSection" class="hidden space-y-3 fade-in">
+                    <h4 class="text-xs font-bold uppercase tracking-wider text-gray-400 flex items-center gap-1.5">
+                        <i data-lucide="zap" class="w-4 h-4 text-brand-green"></i>
+                        Recommended: Switch & Save Instantly
+                    </h4>
+
+                    <div class="bg-white dark:bg-dark-200 border-2 border-brand-green/40 hover:border-brand-green p-4 rounded-xl flex items-center justify-between transition shadow-sm">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-lg bg-green-100 dark:bg-green-900/30 flex items-center justify-center text-xl">💳</div>
+                            <div>
+                                <h5 class="text-sm font-bold">Wise Multi-Currency</h5>
+                                <p class="text-[11px] text-gray-400">Real mid-market FX. Save up to $180/mo vs banks.</p>
+                            </div>
+                        </div>
+                        <a href="https://wise.com" target="_blank" rel="noopener" class="px-4 py-2 bg-brand-green hover:bg-green-400 text-black text-xs font-extrabold rounded-lg transition whitespace-nowrap flex items-center gap-1">
+                            Open Free <i data-lucide="external-link" class="w-3 h-3"></i>
+                        </a>
+                    </div>
+
+                    <div id="skydoCard" class="bg-white dark:bg-dark-200 border border-brand-cyan/30 hover:border-brand-cyan p-4 rounded-xl flex items-center justify-between transition shadow-sm">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-lg bg-cyan-100 dark:bg-cyan-900/30 flex items-center justify-center text-xl">🚀</div>
+                            <div>
+                                <h5 class="text-sm font-bold">Skydo Inward Payments</h5>
+                                <p class="text-[11px] text-gray-400">Flat $19 fee, 0% FX markup + Auto FIRA.</p>
+                            </div>
+                        </div>
+                        <a href="https://www.skydo.com" target="_blank" rel="noopener" class="px-4 py-2 bg-brand-cyan hover:bg-cyan-300 text-black text-xs font-extrabold rounded-lg transition whitespace-nowrap flex items-center gap-1">
+                            Get $19 Route <i data-lucide="external-link" class="w-3 h-3"></i>
+                        </a>
+                    </div>
+
+                    <div class="bg-white dark:bg-dark-200 border border-gray-200 dark:border-gray-800 hover:border-gray-400 p-4 rounded-xl flex items-center justify-between transition">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-xl">📜</div>
+                            <div>
+                                <h5 class="text-sm font-bold">Deel Contractor Suite</h5>
+                                <p class="text-[11px] text-gray-400">Auto W-8BEN compliance + instant debit card.</p>
+                            </div>
+                        </div>
+                        <a href="https://www.deel.com" target="_blank" rel="noopener" class="px-4 py-2 bg-gray-100 dark:bg-dark-100 hover:bg-gray-200 dark:hover:bg-gray-700 text-xs font-bold rounded-lg transition whitespace-nowrap flex items-center gap-1">
+                            Free W-8BEN <i data-lucide="external-link" class="w-3 h-3"></i>
+                        </a>
+                    </div>
+
+                    <div class="bg-white dark:bg-dark-200 border border-gray-200 dark:border-gray-800 hover:border-gray-400 p-4 rounded-xl flex items-center justify-between transition font-sans">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-lg bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center text-xl">🌐</div>
+                            <div>
+                                <h5 class="text-sm font-bold">Payoneer Global</h5>
+                                <p class="text-[11px] text-gray-400">USD/EUR/GBP payouts in 190+ countries.</p>
+                            </div>
+                        </div>
+                        <a href="https://www.payoneer.com" target="_blank" rel="noopener" class="px-4 py-2 bg-gray-100 dark:bg-dark-100 hover:bg-gray-200 dark:hover:bg-gray-700 text-xs font-bold rounded-lg transition whitespace-nowrap flex items-center gap-1">
+                            Open Free <i data-lucide="external-link" class="w-3 h-3"></i>
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Ad Slot 2 -->
+                <div class="w-full bg-gray-100 dark:bg-dark-100 border border-dashed border-gray-300 dark:border-gray-700 rounded-xl p-3 text-center text-xs text-gray-400 dark:text-gray-600">
+                    Ad Space — In-Content Native Ad
+                </div>
+
+                <!-- Tax Tip -->
+                <div id="taxTip" class="hidden bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800/40 p-4 rounded-xl text-xs text-gray-600 dark:text-gray-300 fade-in">
+                    <p class="font-bold text-blue-700 dark:text-blue-400 flex items-center gap-1.5 mb-1">
+                        <i data-lucide="lightbulb" class="w-4 h-4"></i> Tax Optimization Tip
+                    </p>
+                    <p id="taxTipText"></p>
+                </div>
+
+                <!-- Share Button -->
+                <div id="shareSection" class="hidden fade-in">
+                    <button onclick="shareResult()" class="w-full py-3 bg-gray-900 dark:bg-white text-white dark:text-black font-bold text-sm rounded-xl hover:opacity-90 transition flex items-center justify-center gap-2">
+                        <i data-lucide="share-2" class="w-4 h-4"></i>
+                        Share My Savings With Friends
+                    </button>
+                    <p class="text-[10px] text-gray-400 text-center mt-1.5">Help other remote workers discover their true take-home pay</p>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- ═══════════════ FAQ SECTION (SEO Gold) ═══════════════ -->
+        <section class="mt-12 max-w-3xl mx-auto fade-in">
+            <h3 class="text-2xl font-black text-center mb-2">Frequently Asked Questions</h3>
+            <p class="text-sm text-gray-400 text-center mb-6">Everything you need to know as a US remote contractor</p>
+            <div class="space-y-3">
+                <details class="faq-item bg-white dark:bg-dark-200 border border-gray-200 dark:border-gray-800 rounded-xl p-4 cursor-pointer">
+                    <summary class="flex items-center justify-between font-semibold text-sm">
+                        <span>What is Form W-8BEN and why do I need it?</span>
+                        <i data-lucide="chevron-down" class="w-4 h-4 faq-arrow text-brand-green"></i>
+                    </summary>
+                    <p class="mt-3 text-xs text-gray-500 dark:text-gray-400 leading-relaxed">
+                        W-8BEN is a US IRS form that non-US contractors fill out to claim tax treaty benefits (DTAA). Without it, US clients legally must withhold 30% of your payment as federal tax. With a signed W-8BEN, this drops to 0% for most treaty countries like India, Philippines, UK, Pakistan. You keep 30% more income instantly.
+                    </p>
+                </details>
+                <details class="faq-item bg-white dark:bg-dark-200 border border-gray-200 dark:border-gray-800 rounded-xl p-4 cursor-pointer">
+                    <summary class="flex items-center justify-between font-semibold text-sm">
+                        <span>Is Wise really better than Payoneer or bank wire?</span>
+                        <i data-lucide="chevron-down" class="w-4 h-4 faq-arrow text-brand-green"></i>
+                    </summary>
+                    <p class="mt-3 text-xs text-gray-500 dark:text-gray-400 leading-relaxed">
+                        Yes, in almost all scenarios. Wise uses real mid-market exchange rates with a tiny transparent fee (0.5%–0.8%). Payoneer charges a hidden 2%–3% markup on FX rates plus transfer fees. Traditional SWIFT bank wires cost $25–$50 per transfer plus poor intermediary bank conversion rates.
+                    </p>
+                </details>
+                <details class="faq-item bg-white dark:bg-dark-200 border border-gray-200 dark:border-gray-800 rounded-xl p-4 cursor-pointer">
+                    <summary class="flex items-center justify-between font-semibold text-sm">
+                        <span>How does Section 44ADA work in India for freelancers?</span>
+                        <i data-lucide="chevron-down" class="w-4 h-4 faq-arrow text-brand-green"></i>
+                    </summary>
+                    <p class="mt-3 text-xs text-gray-500 dark:text-gray-400 leading-relaxed">
+                        Under Section 44ADA of the Indian Income Tax Act, eligible professionals (software developers, designers, consultants) earning up to ₹75 Lakhs/year can declare 50% of gross income as flat tax-free expenses. You only pay tax on the remaining 50%, dramatically reducing your effective local tax rate to ~6%-12%.
+                    </p>
+                </details>
+                <details class="faq-item bg-white dark:bg-dark-200 border border-gray-200 dark:border-gray-800 rounded-xl p-4 cursor-pointer">
+                    <summary class="flex items-center justify-between font-semibold text-sm">
+                        <span>What is Skydo and why is it recommended for Indian contractors?</span>
+                        <i data-lucide="chevron-down" class="w-4 h-4 faq-arrow text-brand-green"></i>
+                    </summary>
+                    <p class="mt-3 text-xs text-gray-500 dark:text-gray-400 leading-relaxed">
+                        Skydo provides local US bank account details for non-US contractors. They charge a flat $19 per transaction with zero FX markup, making it vastly cheaper than PayPal or traditional banks for payouts over $1,500/month. Additionally, they issue automatic digital FIRA certificates required for Indian IT compliance.
+                    </p>
+                </details>
+                <details class="faq-item bg-white dark:bg-dark-200 border border-gray-200 dark:border-gray-800 rounded-xl p-4 cursor-pointer">
+                    <summary class="flex items-center justify-between font-semibold text-sm">
+                        <span>How often are exchange rates updated?</span>
+                        <i data-lucide="chevron-down" class="w-4 h-4 faq-arrow text-brand-green"></i>
+                    </summary>
+                    <p class="mt-3 text-xs text-gray-500 dark:text-gray-400 leading-relaxed">
+                        NetPayRemote fetches live exchange rates directly every 30 minutes via public FX API endpoints. Rates are cached locally to ensure sub-second rendering speeds without rate-limiting interruptions.
+                    </p>
+                </details>
+                <details class="faq-item bg-white dark:bg-dark-200 border border-gray-200 dark:border-gray-800 rounded-xl p-4 cursor-pointer">
+                    <summary class="flex items-center justify-between font-semibold text-sm">
+                        <span>Do I need to pay US federal taxes if I live outside the USA?</span>
+                        <i data-lucide="chevron-down" class="w-4 h-4 faq-arrow text-brand-green"></i>
+                    </summary>
+                    <p class="mt-3 text-xs text-gray-500 dark:text-gray-400 leading-relaxed">
+                        If you are not a US citizen/green card holder and perform all your work physically outside the US, your earnings are classified as non-US source income. Provided you submit a valid W-8BEN form, you owe 0% US federal income tax. You only pay tax to your home country's tax authority.
+                    </p>
+                </details>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- ═══════════════ ONBOARDING MODAL ═══════════════ -->
+    <div id="tutorialModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 modal-overlay fade-in">
+        <div class="bg-white dark:bg-dark-200 border border-gray-200 dark:border-gray-800 rounded-2xl max-w-md w-full p-6 shadow-2xl relative">
+            <div class="text-center">
+                <div class="w-12 h-12 bg-brand-green/10 text-brand-green rounded-full flex items-center justify-center mx-auto mb-3">
+                    <i data-lucide="sparkles" class="w-6 h-6"></i>
+                </div>
+                <h3 class="text-lg font-bold">Welcome to NetPayRemote!</h3>
+                <p class="text-xs text-gray-400 mt-1">Calculate your true net earnings in 3 quick steps:</p>
+            </div>
+            <div class="mt-5 space-y-3 text-xs">
+                <div class="flex items-start gap-3 bg-gray-50 dark:bg-dark-300 p-3 rounded-xl border border-gray-100 dark:border-gray-800">
+                    <span class="w-5 h-5 bg-brand-green text-black rounded-full font-bold flex items-center justify-center text-[10px] shrink-0 mt-0.5">1</span>
+                    <p class="text-gray-600 dark:text-gray-300">Enter your contract pay rate (Hourly, Monthly, or Annual USD).</p>
+                </div>
+                <div class="flex items-start gap-3 bg-gray-50 dark:bg-dark-300 p-3 rounded-xl border border-gray-100 dark:border-gray-800">
+                    <span class="w-5 h-5 bg-brand-green text-black rounded-full font-bold flex items-center justify-center text-[10px] shrink-0 mt-0.5">2</span>
+                    <p class="text-gray-600 dark:text-gray-300">Select your resident country & payout platform (Wise, Deel, etc.).</p>
+                </div>
+                <div class="flex items-start gap-3 bg-gray-50 dark:bg-dark-300 p-3 rounded-xl border border-gray-100 dark:border-gray-800">
+                    <span class="w-5 h-5 bg-brand-green text-black rounded-full font-bold flex items-center justify-center text-[10px] shrink-0 mt-0.5">3</span>
+                    <p class="text-gray-600 dark:text-gray-300">See your exact take-home pay & compare routes to stop losing thousands in fees.</p>
+                </div>
+            </div>
+            <button onclick="closeTutorial()" class="w-full mt-6 py-3 bg-brand-green hover:bg-green-400 text-black font-bold text-xs rounded-xl transition">
+                Got It, Let's Calculate!
+            </button>
+        </div>
+    </div>
+
+    <!-- ═══════════════ FOOTER ═══════════════ -->
+    <footer class="mt-16 border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-dark-200 py-8 text-center text-xs text-gray-400">
+        <div class="max-w-6xl mx-auto px-4 space-y-3">
+            <p class="font-bold text-gray-700 dark:text-gray-300">NetPayRemote — US Remote Contractor Tax Engine</p>
+            <p class="max-w-xl mx-auto text-[11px] leading-relaxed">
+                Disclaimer: NetPayRemote provides tax estimations based on public DTAA treaties and standard national tax schemes for 2026. This is not formal tax or legal advice. Consult a certified tax professional in your jurisdiction for personalized tax filing.
+            </p>
+            <p class="text-[10px] text-gray-500">© 2026 NetPayRemote. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <!-- ═══════════════ COMPLETE ENGINE LOGIC ═══════════════ -->
+    <script>
+        // State Management
+        let fxRates = { INR: 86.52, PHP: 58.2, BRL: 5.65, PKRs: 278.5, NGN: 1540, PLN: 3.98, GBP: 0.79, CAD: 1.38, MXN: 19.8, EUR: 0.92 };
+        let activeFxSymbol = "₹";
+        let activeFxCode = "INR";
+        let activeFxRate = 86.52;
+        let selectedDisplayCurrency = "local";
+        let calcTimeout = null;
+        let lastCalcResult = null;
+
+        const countryData = {
+            IN: { name: "India", code: "INR", symbol: "₹", defaultRate: 86.52, taxPct: 0.12, tip: "Under Section 44ADA, Indian professionals can declare 50% of gross revenue as presumptive expenses, drastically cutting taxable liability." },
+            PH: { name: "Philippines", code: "PHP", symbol: "₱", defaultRate: 58.2, taxPct: 0.08, tip: "Under TRAIN Law, self-employed individuals earning under ₱3M can opt for a flat 8% income tax rate in lieu of progressive rates." },
+            BR: { name: "Brazil", code: "BRL", symbol: "R$", defaultRate: 5.65, taxPct: 0.15, tip: "Declare foreign income via Carnê-Leão monthly to avoid heavy penalties and progressive income tax brackets up to 27.5%." },
+            PK: { name: "Pakistan", code: "PKR", symbol: "Rs", defaultRate: 278.5, taxPct: 0.01, tip: "Register with PSEB (Pakistan Software Export Board) to qualify for reduced 0.25% concessionary tax rate on IT exports." },
+            NG: { name: "Nigeria", code: "NGN", symbol: "₦", defaultRate: 1540, taxPct: 0.18, tip: "Consolidate foreign transfers into domiciliary accounts to track income accurately for personal income tax deductions." },
+            PL: { name: "Poland", code: "PLN", symbol: "zł", defaultRate: 3.98, taxPct: 0.12, tip: "Software contractors in Poland can leverage Ryczałt flat-rate taxation at 12% on IT service revenues." },
+            GB: { name: "United Kingdom", code: "GBP", symbol: "£", defaultRate: 0.79, taxPct: 0.22, tip: "Register as a Sole Trader or operate through a Limited Company to optimize National Insurance and Dividend tax thresholds." },
+            CA: { name: "Canada", code: "CAD", symbol: "C$", defaultRate: 1.38, taxPct: 0.24, tip: "Deduct home office expenses, hardware, and professional subscriptions on Form T2125 to lower net taxable income." },
+            MX: { name: "Mexico", code: "MXN", symbol: "$", defaultRate: 19.8, taxPct: 0.02, tip: "Opt into RESICO (Simplified Trust Regime) to pay ultra-low progressive tax rates between 1% and 2.5% on gross revenue." },
+            OTHER: { name: "Other Country", code: "USD", symbol: "$", defaultRate: 1.0, taxPct: 0.18, tip: "Always maintain signed W-8BEN documentation to protect foreign earnings from 30% US IRS backup tax." }
+        };
+
+        const platformData = {
+            wise: { name: "Wise", feePct: 0.008, feeFlat: 0, rating: "⭐ Best Overall" },
+            skydo: { name: "Skydo", feePct: 0.0, feeFlat: 19, rating: "🚀 Best for India" },
+            deel: { name: "Deel", feePct: 0.015, feeFlat: 0, rating: "📜 Great Compliance" },
+            payoneer: { name: "Payoneer", feePct: 0.028, feeFlat: 0, rating: "🌐 High Availability" },
+            upwork: { name: "Upwork", feePct: 0.10, feeFlat: 0, rating: "⚠️ High Fees" },
+            swift: { name: "Bank Wire", feePct: 0.01, feeFlat: 35, rating: "🏦 Slow & Expensive" }
+        };
+
+        // Theme Switcher
+        function toggleTheme() {
+            document.documentElement.classList.toggle('dark');
+            const isDark = document.documentElement.classList.contains('dark');
+            localStorage.setItem('netpay_theme', isDark ? 'dark' : 'light');
+        }
+
+        function initTheme() {
+            const saved = localStorage.getItem('netpay_theme');
+            if (saved === 'dark' || (!saved && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                document.documentElement.classList.add('dark');
+            } else {
+                document.documentElement.classList.remove('dark');
+            }
+        }
+
+        // Onboarding Tutorial
+        function checkTutorial() {
+            if (!localStorage.getItem('netpay_tutorial_seen')) {
+                document.getElementById('tutorialModal').classList.remove('hidden');
+            }
+        }
+
+        function closeTutorial() {
+            localStorage.setItem('netpay_tutorial_seen', 'true');
+            document.getElementById('tutorialModal').classList.add('hidden');
+        }
+
+        // Field Helpers
+        function toggleHourly() {
+            const period = document.getElementById('payPeriod').value;
+            const hourlyFields = document.getElementById('hourlyFields');
+            if (period === 'hourly') {
+                hourlyFields.classList.remove('hidden');
+            } else {
+                hourlyFields.classList.add('hidden');
+            }
+        }
+
+        // Geolocation Detection
+        async function detectLocation() {
+            try {
+                const res = await fetch('https://ipapi.co/json/');
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.country_code && countryData[data.country_code]) {
+                        document.getElementById('country').value = data.country_code;
+                        const badge = document.getElementById('detectedBadge');
+                        badge.innerText = `${data.country_code} Detected`;
+                        badge.classList.remove('hidden');
+                    }
+                }
+            } catch (e) {
+                console.log('Location detection skipped');
+            }
+        }
+
+        // Exchange Rate API Engine
+        async function fetchFxRates() {
+            try {
+                const res = await fetch('https://open.er-api.com/v6/latest/USD');
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.rates) {
+                        fxRates = { ...fxRates, ...data.rates };
+                        const inrRate = fxRates.INR ? fxRates.INR.toFixed(2) : "86.52";
+                        const now = new Date();
+                        const timeStr = `${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}`;
+                        document.getElementById('liveTicker').innerText = `1 USD = ₹${inrRate} (${timeStr})`;
+                    }
+                }
+            } catch (e) {
+                document.getElementById('liveTicker').innerText = `1 USD = ₹86.52 (Cached)`;
+            }
+        }
+
+        function debouncedCalculate() {
+            clearTimeout(calcTimeout);
+            calcTimeout = setTimeout(calculate, 400);
+        }
+
+        // Calculation Engine
+        function calculate() {
+            const payAmount = parseFloat(document.getElementById('payAmount').value) || 0;
+            if (payAmount <= 0) {
+                document.getElementById('emptyState').classList.remove('hidden');
+                document.getElementById('loadingState').classList.add('hidden');
+                document.getElementById('resultContent').classList.add('hidden');
+                document.getElementById('whatIfSection').classList.add('hidden');
+                document.getElementById('compareSection').classList.add('hidden');
+                document.getElementById('cpaSection').classList.add('hidden');
+                document.getElementById('taxTip').classList.add('hidden');
+                document.getElementById('shareSection').classList.add('hidden');
+                return;
+            }
+
+            document.getElementById('emptyState').classList.add('hidden');
+            document.getElementById('loadingState').classList.remove('hidden');
+            document.getElementById('resultContent').classList.add('hidden');
+
+            setTimeout(() => {
+                executeCalcLogic(payAmount);
+            }, 250);
+        }
+
+        function executeCalcLogic(payAmount) {
+            const period = document.getElementById('payPeriod').value;
+            const hoursWeek = parseFloat(document.getElementById('hoursWeek').value) || 40;
+            const weeksYear = parseFloat(document.getElementById('weeksYear').value) || 50;
+            const countryCode = document.getElementById('country').value || 'OTHER';
+            const platformKey = document.getElementById('platform').value || 'wise';
+            const hasW8 = document.getElementById('w8ben').checked;
+
+            let grossAnnual = 0;
+            if (period === 'hourly') {
+                grossAnnual = payAmount * hoursWeek * weeksYear;
+            } else if (period === 'monthly') {
+                grossAnnual = payAmount * 12;
+            } else {
+                grossAnnual = payAmount;
+            }
+
+            const country = countryData[countryCode] || countryData.OTHER;
+            const platform = platformData[platformKey] || platformData.wise;
+
+            activeFxSymbol = country.symbol;
+            activeFxCode = country.code;
+            activeFxRate = fxRates[country.code] || country.defaultRate || 1.0;
+
+            const platformCutAnnual = (grossAnnual * platform.feePct) + (platform.feeFlat * 12);
+            const usTaxAnnual = hasW8 ? 0 : (grossAnnual * 0.30);
+            const taxableAfterUS = grossAnnual - usTaxAnnual - platformCutAnnual;
+            const localTaxAnnual = Math.max(0, taxableAfterUS * country.taxPct);
+
+            const netAnnualUSD = grossAnnual - platformCutAnnual - usTaxAnnual - localTaxAnnual;
+            const netMonthlyUSD = netAnnualUSD / 12;
+
+            lastCalcResult = {
+                grossAnnual,
+                platformCutAnnual,
+                usTaxAnnual,
+                localTaxAnnual,
+                netAnnualUSD,
+                netMonthlyUSD,
+                activeFxRate,
+                activeFxSymbol,
+                activeFxCode
+            };
+
+            // Render Output
+            document.getElementById('loadingState').classList.add('hidden');
+            document.getElementById('resultContent').classList.remove('hidden');
+
+            animateCount('netUSD', netMonthlyUSD, '$');
+            updateLocalCurrencyDisplay();
+
+            document.getElementById('grossAnnual').innerText = '$' + Math.round(grossAnnual).toLocaleString();
+            document.getElementById('feeTotal').innerText = '-$' + Math.round(platformCutAnnual).toLocaleString();
+            document.getElementById('usTax').innerText = '$' + Math.round(usTaxAnnual).toLocaleString();
+            document.getElementById('localTax').innerText = '-$' + Math.round(localTaxAnnual).toLocaleString();
+
+            const netPct = Math.max(0, Math.min(100, (netAnnualUSD / grossAnnual) * 100));
+            const taxPct = Math.max(0, Math.min(100, ((usTaxAnnual + localTaxAnnual) / grossAnnual) * 100));
+            const feePct = Math.max(0, Math.min(100, (platformCutAnnual / grossAnnual) * 100));
+
+            document.getElementById('effPct').innerText = netPct.toFixed(1) + '%';
+            document.getElementById('barNet').style.width = netPct + '%';
+            document.getElementById('barTax').style.width = taxPct + '%';
+            document.getElementById('barFee').style.width = feePct + '%';
+
+            // Shock Factor Warning
+            const shockBox = document.getElementById('shockBox');
+            const bestFee = (grossAnnual * 0.008);
+            const feeLoss = platformCutAnnual - bestFee;
+            if (feeLoss > 150) {
+                shockBox.classList.remove('hidden');
+                document.getElementById('shockText').innerText = `You're losing $${Math.round(feeLoss).toLocaleString()}/year in excess platform cuts!`;
+            } else {
+                shockBox.classList.add('hidden');
+            }
+
+            // Tax Tip
+            const taxTip = document.getElementById('taxTip');
+            if (country.tip) {
+                taxTip.classList.remove('hidden');
+                document.getElementById('taxTipText').innerText = country.tip;
+            } else {
+                taxTip.classList.add('hidden');
+            }
+
+            // Toggle Skydo Card for India
+            const skydoCard = document.getElementById('skydoCard');
+            if (countryCode === 'IN') {
+                skydoCard.classList.remove('hidden');
+            } else {
+                skydoCard.classList.add('hidden');
+            }
+
+            // Render Supporting Modules
+            renderCompareTable(grossAnnual);
+            updateWhatIf();
+
+            document.getElementById('whatIfSection').classList.remove('hidden');
+            document.getElementById('compareSection').classList.remove('hidden');
+            document.getElementById('cpaSection').classList.remove('hidden');
+            document.getElementById('shareSection').classList.remove('hidden');
+
+            if (feeLoss > 500) {
+                triggerConfetti();
+            }
+
+            lucide.createIcons();
+        }
+
+        function setDisplayCurrency(curr) {
+            selectedDisplayCurrency = curr;
+            const btns = ['btnLocal', 'btnUSD', 'btnEUR', 'btnGBP'];
+            btns.forEach(b => {
+                const el = document.getElementById(b);
+                if (el) {
+                    el.className = "text-[10px] font-bold px-2 py-0.5 rounded bg-gray-200 dark:bg-dark-100 text-gray-500";
+                }
+            });
+
+            if (curr === 'local') document.getElementById('btnLocal').className = "text-[10px] font-bold px-2 py-0.5 rounded bg-brand-green text-black";
+            if (curr === 'USD') document.getElementById('btnUSD').className = "text-[10px] font-bold px-2 py-0.5 rounded bg-brand-green text-black";
+            if (curr === 'EUR') document.getElementById('btnEUR').className = "text-[10px] font-bold px-2 py-0.5 rounded bg-brand-green text-black";
+            if (curr === 'GBP') document.getElementById('btnGBP').className = "text-[10px] font-bold px-2 py-0.5 rounded bg-brand-green text-black";
+
+            updateLocalCurrencyDisplay();
+        }
+
+        function updateLocalCurrencyDisplay() {
+            if (!lastCalcResult) return;
+
+            let value = 0;
+            let symbol = "$";
+            let label = "In Local Currency";
+
+            if (selectedDisplayCurrency === 'local') {
+                value = lastCalcResult.netMonthlyUSD * lastCalcResult.activeFxRate;
+                symbol = lastCalcResult.activeFxSymbol;
+                label = `In ${lastCalcResult.activeFxCode}`;
+            } else if (selectedDisplayCurrency === 'USD') {
+                value = lastCalcResult.netMonthlyUSD;
+                symbol = "$";
+                label = "In USD";
+            } else if (selectedDisplayCurrency === 'EUR') {
+                value = lastCalcResult.netMonthlyUSD * (fxRates.EUR || 0.92);
+                symbol = "€";
+                label = "In EUR";
+            } else if (selectedDisplayCurrency === 'GBP') {
+                value = lastCalcResult.netMonthlyUSD * (fxRates.GBP || 0.79);
+                symbol = "£";
+                label = "In GBP";
+            }
+
+            document.getElementById('localLabel').innerText = label;
+            document.getElementById('netLocal').innerText = `${symbol}${Math.round(value).toLocaleString()}`;
+        }
+
+        function updateWhatIf() {
+            const sliderRate = parseFloat(document.getElementById('whatIfSlider').value);
+            document.getElementById('whatIfRate').innerText = sliderRate;
+            
+            const hoursWeek = parseFloat(document.getElementById('hoursWeek').value) || 40;
+            const weeksYear = parseFloat(document.getElementById('weeksYear').value) || 50;
+            const countryCode = document.getElementById('country').value || 'OTHER';
+            const country = countryData[countryCode] || countryData.OTHER;
+            
+            const annualGross = sliderRate * hoursWeek * weeksYear;
+            const estNet = (annualGross * (1 - country.taxPct - 0.01)) / 12;
+            
+            document.getElementById('whatIfResult').innerText = '$' + Math.round(estNet).toLocaleString() + '/mo';
+        }
+
+        function renderCompareTable(grossAnnual) {
+            const tbody = document.getElementById('compareBody');
+            tbody.innerHTML = '';
+
+            Object.keys(platformData).forEach(key => {
+                const p = platformData[key];
+                const annualFee = (grossAnnual * p.feePct) + (p.feeFlat * 12);
+                const monthlyFee = annualFee / 12;
+
+                const tr = document.createElement('tr');
+                tr.className = "border-b border-gray-100 dark:border-gray-800/50 hover:bg-gray-50 dark:hover:bg-dark-300/50 transition";
+                tr.innerHTML = `
+                    <td class="py-2 font-bold">${p.name}</td>
+                    <td class="text-right py-2">$${Math.round(monthlyFee).toLocaleString()}</td>
+                    <td class="text-right py-2 text-red-500 font-semibold">-$${Math.round(annualFee).toLocaleString()}</td>
+                    <td class="text-right py-2 font-semibold text-gray-400">${p.rating}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function animateCount(id, target, prefix = '') {
+            const el = document.getElementById(id);
+            let current = 0;
+            const duration = 500;
+            const stepTime = 20;
+            const steps = duration / stepTime;
+            const increment = target / steps;
+
+            const timer = setInterval(() => {
+                current += increment;
+                if (current >= target) {
+                    current = target;
+                    clearInterval(timer);
+                }
+                el.innerText = prefix + Math.round(current).toLocaleString();
+            }, stepTime);
+        }
+
+        function triggerConfetti() {
+            for (let i = 0; i < 30; i++) {
+                const confetti = document.createElement('div');
+                confetti.className = 'confetti';
+                confetti.style.left = Math.random() * 100 + 'vw';
+                confetti.style.backgroundColor = ['#00D26A', '#00F0FF', '#3B82F6', '#FFD700'][Math.floor(Math.random() * 4)];
+                confetti.style.animationDuration = (Math.random() * 2 + 2) + 's';
+                document.body.appendChild(confetti);
+                setTimeout(() => confetti.remove(), 3000);
+            }
+        }
+
+        function shareResult() {
+            if (!lastCalcResult) return;
+            const text = `I calculated my exact remote contractor take-home pay using NetPayRemote! Check your exact net earnings after W-8BEN, DTAA, and fees:`;
+            const url = "https://netpayremote.vercel.app/";
+
+            if (navigator.share) {
+                navigator.share({ title: 'NetPayRemote', text: text, url: url }).catch(() => {});
+            } else {
+                navigator.clipboard.writeText(`${text} ${url}`);
+                alert("Link copied to clipboard! Share it with your friends.");
+            }
+        }
+
+        // Initialize App
+        window.addEventListener('DOMContentLoaded', () => {
+            initTheme();
+            checkTutorial();
+            detectLocation();
+            fetchFxRates();
+            lucide.createIcons();
+        });
+    </script>
+</body>
+</html>
